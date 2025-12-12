@@ -1,11 +1,14 @@
 use anyhow::Result;
 use reqwest::Client;
+use serde::{Serialize, de::DeserializeOwned};
+
 
 #[derive(Clone)]
 pub struct ConsulXClient {
     pub http: Client,
     pub base: String,
 }
+
 
 impl ConsulXClient {
     pub fn new(base: &str) -> Result<Self> {
@@ -76,6 +79,61 @@ impl ConsulXClient {
         }
 
         Ok(vec![]) // treat non-200 as empty list
+    }
+
+    /// High-level: fetch a value and deserialize JSON into type T
+    pub async fn kv_get_json<T>(&self, key: &str) -> Result<Option<T>>
+    where
+        T: DeserializeOwned,
+    {
+        if let Some(raw) = self.kv_get_raw(key).await? {
+            let value = serde_json::from_str::<T>(&raw)?;
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// High-level: serialize a JSON-compatible type and store it
+    pub async fn kv_put_json<T>(&self, key: &str, value: &T) -> Result<()>
+    where
+        T: Serialize,
+    {
+        let json = serde_json::to_string(value)?;
+        self.kv_put(key, &json).await?;
+        Ok(())
+    }
+
+
+    /// Fetch JSON under a prefix and deserialize each entry.
+    ///
+    /// Returns:
+    ///     Vec<(key, T)>
+    ///
+    /// Example keys:
+    ///     app/config/db      → Some JSON
+    ///     app/config/cache   → Some JSON
+    ///
+    pub async fn kv_list_json<T>(&self, prefix: &str) -> Result<Vec<(String, T)>>
+    where
+        T: DeserializeOwned,
+    {
+        let keys = self.kv_list(prefix).await?;
+
+        let mut out = Vec::new();
+
+        for key in keys {
+            if let Some(raw) = self.kv_get_raw(&key).await? {
+                if raw.trim().is_empty() {
+                    continue;
+                }
+
+                let parsed = serde_json::from_str::<T>(&raw)?;
+                out.push((key, parsed));
+            }
+        }
+
+        Ok(out)
     }
 
     /// WATCH a single key using blocking queries + x-consul-index
