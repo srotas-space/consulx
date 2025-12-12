@@ -1,10 +1,25 @@
 [package]
 name = "consulx"
 version = "0.1.0"
-edition = "2021"
-authors = ["Your Name <you@example.com>"]
+edition = "2024"
+rust-version = "1.89"
+authors = ["Snm Maurya <snmsanatani@gmail.com>"]
 description = "A pure-HTTP Consul KV CLI + REPL built from scratch"
+documentation = "https://docs.rs/consulx"
+homepage = "https://github.com/srotas-space/consulx"
+repository = "https://github.com/srotas-space/consulx"
+readme = "README.md"
 license = "MIT"
+categories = ["development-tools", "command-line-utilities", "web-programming::http-client"]
+keywords = [
+    "consul",
+    "kv",
+    "cli",
+    "actix",
+    "axum",
+]
+
+
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
