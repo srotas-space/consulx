@@ -1,8 +1,7 @@
 [package]
 name = "consulx"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
-rust-version = "1.89"
 authors = ["Snm Maurya <snmsanatani@gmail.com>"]
 description = "A pure-HTTP Consul KV CLI + REPL built from scratch"
 documentation = "https://docs.rs/consulx"

@@ -80,20 +80,21 @@ CONSUL_HTTP_ADDR=http://127.0.0.1:8500 consulx
 
 ## 🖥️ REPL Commands
 
-| Command | Description |
-|--------|-------------|
-| get <key> | Fetch raw value |
-| put <key> <value> | Store value |
-| del <key> | Delete key |
-| list <prefix> | List keys |
-| tree <prefix> | ASCII tree |
-| get-json <key> | Pretty JSON |
-| put-json <key> <json> | Validate + store |
-| edit <key> | Edit in $EDITOR |
-| watch <key> | Watch key |
-| watch-prefix <prefix> | Watch prefix |
-| help | Help |
-| exit | Quit |
+| Command        | Usage                   | Description                       |
+| -------------- | ----------------------- | --------------------------------- |
+| `get`          | `get <key>`             | Fetch raw value stored at a key   |
+| `put`          | `put <key> <value>`     | Store a raw string value          |
+| `del`          | `del <key>`             | Delete a key                      |
+| `list`         | `list <prefix>`         | List all keys under a prefix      |
+| `tree`         | `tree <prefix>`         | Show keys as an ASCII tree        |
+| `get-json`     | `get-json <key>`        | Fetch and pretty-print JSON value |
+| `put-json`     | `put-json <key> <json>` | Validate & store JSON value       |
+| `edit`         | `edit <key>`            | Edit value in `$EDITOR`           |
+| `watch`        | `watch <key>`           | Watch a single key for changes    |
+| `watch-prefix` | `watch-prefix <prefix>` | Watch all keys under a prefix     |
+| `help`         | `help`                  | Show available commands           |
+| `exit`         | `exit` / `quit`         | Exit the REPL                     |
+
 
 ---
 
@@ -117,20 +118,24 @@ for (key, flag) in flags {
 ## 📦 Library API Summary
 
 ```rust
-ConsulXClient::new(url)
-ConsulXClient::from_env()
+// Client creation
+ConsulXClient::new(url)          // Create client with explicit Consul URL
+ConsulXClient::from_env()        // Uses CONSUL_HTTP_ADDR (default: http://127.0.0.1:8500)
 
-kv_get_raw
-kv_put
-kv_delete
-kv_list
+// Raw KV operations
+kv_get_raw(key)                  // -> Option<String>
+kv_put(key, value)               // Store raw value
+kv_delete(key)                   // Delete a key
+kv_list(prefix)                  // List keys under a prefix
 
-kv_get_json<T>
-kv_put_json<T>
-kv_list_json<T>
+// JSON helpers (typed)
+kv_get_json<T>(key)              // -> Option<T>
+kv_put_json<T>(key, &T)          // Serialize & store JSON
+kv_list_json<T>(prefix)          // Load JSON objects under prefix
 
-kv_watch
-kv_watch_prefix
+// Watches (blocking queries)
+kv_watch(key)                    // Watch a single key
+kv_watch_prefix(prefix)          // Watch all keys under prefix
 ```
 
 ---
