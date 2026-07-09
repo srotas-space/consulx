@@ -6,7 +6,7 @@
 [![Downloads](https://img.shields.io/crates/d/consulx)](https://crates.io/crates/consulx)
 [![Recent Downloads](https://img.shields.io/crates/dr/consulx)](https://crates.io/crates/consulx)
 
-![SnmFDBCLI](https://srotas-suite-space.s3.ap-south-1.amazonaws.com/srotas-space.png)
+![SnmFDBCLI](https://srotasspace.s3.ap-south-1.amazonaws.com/srotas.svg)
 
 
 **consulx** is a modern Rust toolkit for working with **Consul KV**, providing:
@@ -140,7 +140,7 @@ kv_watch_prefix(prefix)          // Watch all keys under prefix
 
 ---
 
-Made with ❤️ by the [Srotas Space] (https://srotas.space/open-source)
+Made with ❤️ by the [Srotas Space] (https://open-source.srotas.space)
 
 
 ---
