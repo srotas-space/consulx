@@ -16,6 +16,28 @@ pub enum Command {
     Empty,
 }
 
+/// Strip one pair of matching surrounding quotes, if present.
+fn unquote(s: &str) -> &str {
+    let bytes = s.as_bytes();
+    if s.len() >= 2 {
+        let (first, last) = (bytes[0], bytes[bytes.len() - 1]);
+        if (first == b'"' || first == b'\'') && first == last {
+            return &s[1..s.len() - 1];
+        }
+    }
+    s
+}
+
+/// Split `input` into (command, first-arg, verbatim-rest). The rest preserves
+/// the original spacing so values with embedded whitespace survive intact.
+fn split3(input: &str) -> (String, Option<&str>, Option<&str>) {
+    let mut it = input.splitn(3, char::is_whitespace);
+    let cmd = it.next().unwrap_or("").to_lowercase();
+    let arg = it.next().filter(|s| !s.is_empty());
+    let rest = it.next().map(str::trim_start).filter(|s| !s.is_empty());
+    (cmd, arg, rest)
+}
+
 pub fn parse(input: &str) -> Result<Command> {
     let trimmed = input.trim();
 
@@ -34,16 +56,12 @@ pub fn parse(input: &str) -> Result<Command> {
                 .into(),
         }),
         "put" => {
-            let key = p
-                .next()
-                .ok_or(ConsulXError::MissingArgument("key"))?;
-            let value = p.collect::<Vec<_>>().join(" ");
-            if value.is_empty() {
-                return Err(ConsulXError::MissingArgument("value"));
-            }
+            let (_, key, rest) = split3(trimmed);
+            let key = key.ok_or(ConsulXError::MissingArgument("key"))?;
+            let value = rest.ok_or(ConsulXError::MissingArgument("value"))?;
             Ok(Command::Put {
                 key: key.into(),
-                value,
+                value: unquote(value).to_string(),
             })
         }
         "del" | "delete" => Ok(Command::Delete {
@@ -77,16 +95,12 @@ pub fn parse(input: &str) -> Result<Command> {
                 .into(),
         }),
         "put-json" => {
-            let key = p
-                .next()
-                .ok_or(ConsulXError::MissingArgument("key"))?;
-            let json = p.collect::<Vec<_>>().join(" ");
-            if json.is_empty() {
-                return Err(ConsulXError::MissingArgument("json"));
-            }
+            let (_, key, rest) = split3(trimmed);
+            let key = key.ok_or(ConsulXError::MissingArgument("key"))?;
+            let json = rest.ok_or(ConsulXError::MissingArgument("json"))?;
             Ok(Command::PutJson {
                 key: key.into(),
-                json,
+                json: json.to_string(),
             })
         }
         "edit" => Ok(Command::Edit {

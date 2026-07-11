@@ -137,26 +137,35 @@ pub async fn cmd_edit(client: &ConsulXClient, key: &str) -> Result<()> {
     path.push(format!("consulx-{}-{}.tmp", key.replace('/', "_"), ts));
 
     // write current value
-    fs::write(&path, current)?;
+    fs::write(&path, &current)?;
 
-    // pick editor
+    // pick editor; support values with args, e.g. EDITOR="code -w"
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string());
+    let mut editor_parts = editor.split_whitespace();
+    let program = editor_parts.next().unwrap_or("nano");
 
     // launch editor (blocking)
-    let status = ProcCommand::new(editor)
+    let status = ProcCommand::new(program)
+        .args(editor_parts)
         .arg(&path)
         .status()?;
 
     if !status.success() {
         eprintln!("Editor exited with non-zero status, aborting update");
+        fs::remove_file(&path).ok();
         return Ok(());
     }
 
-    // read new value
+    // read new value and only write back if it actually changed
     let new_val = fs::read_to_string(&path)?;
-    client.kv_put(key, &new_val).await?;
-    println!("OK (edited)");
+    fs::remove_file(&path).ok();
 
-    // optional cleanup: fs::remove_file(&path).ok();
+    if new_val == current {
+        println!("No changes");
+    } else {
+        client.kv_put(key, &new_val).await?;
+        println!("OK (edited)");
+    }
+
     Ok(())
 }

@@ -1,6 +1,6 @@
 [package]
 name = "consulx"
-version = "0.1.1"
+version = "1.0.0"
 edition = "2024"
 authors = ["Snm Maurya <snmsanatani@gmail.com>"]
 description = "A pure-HTTP Consul KV CLI + REPL built from scratch"
@@ -29,4 +29,4 @@ reedline = "0.44.0"
 colored = "3.0.0"
 anyhow = "1"
 thiserror = "2.0.17"
-base64 = "0.22"
+percent-encoding = "2"
