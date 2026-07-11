@@ -268,3 +268,68 @@ impl ConsulXClient {
         Ok((new_index, vec![]))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn client(dc: Option<&str>) -> ConsulXClient {
+        ConsulXClient::with_options("http://127.0.0.1:8500", None, dc.map(String::from))
+            .expect("client builds without network")
+    }
+
+    #[test]
+    fn base_trailing_slash_is_trimmed() {
+        let c = ConsulXClient::with_options("http://host:8500/", None, None).unwrap();
+        assert_eq!(c.base, "http://host:8500");
+    }
+
+    #[test]
+    fn kv_url_appends_flags() {
+        let c = client(None);
+        assert_eq!(
+            c.kv_url("app/db", &[("raw", "true".into())]),
+            "http://127.0.0.1:8500/v1/kv/app/db?raw=true"
+        );
+    }
+
+    #[test]
+    fn kv_url_emits_bare_flags() {
+        let c = client(None);
+        // an empty value renders as a valueless flag, e.g. `?keys`
+        assert_eq!(
+            c.kv_url("app/", &[("keys", String::new())]),
+            "http://127.0.0.1:8500/v1/kv/app/?keys"
+        );
+    }
+
+    #[test]
+    fn kv_url_preserves_slashes_but_encodes_specials() {
+        let c = client(None);
+        // path separators stay literal; space, ?, # get percent-encoded
+        assert_eq!(
+            c.kv_url("a b/c?d#e", &[]),
+            "http://127.0.0.1:8500/v1/kv/a%20b/c%3Fd%23e"
+        );
+    }
+
+    #[test]
+    fn kv_url_appends_datacenter() {
+        let c = client(Some("dc1"));
+        assert_eq!(
+            c.kv_url("k", &[]),
+            "http://127.0.0.1:8500/v1/kv/k?dc=dc1"
+        );
+        // dc comes after explicit params
+        assert_eq!(
+            c.kv_url("k", &[("raw", "true".into())]),
+            "http://127.0.0.1:8500/v1/kv/k?raw=true&dc=dc1"
+        );
+    }
+
+    #[test]
+    fn kv_url_no_query_when_empty() {
+        let c = client(None);
+        assert_eq!(c.kv_url("k", &[]), "http://127.0.0.1:8500/v1/kv/k");
+    }
+}

@@ -1,6 +1,6 @@
 use crate::errors::{Result, ConsulXError};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Command {
     Get { key: String },
     Put { key: String, value: String },
@@ -112,5 +112,147 @@ pub fn parse(input: &str) -> Result<Command> {
         "help" | "?" => Ok(Command::Help),
         "exit" | "quit" => Ok(Command::Empty),
         other => Err(ConsulXError::UnknownCommand(other.to_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_and_whitespace_are_empty() {
+        assert_eq!(parse("").unwrap(), Command::Empty);
+        assert_eq!(parse("    ").unwrap(), Command::Empty);
+        assert_eq!(parse("\t \n").unwrap(), Command::Empty);
+    }
+
+    #[test]
+    fn get_parses_key() {
+        assert_eq!(
+            parse("get app/db").unwrap(),
+            Command::Get { key: "app/db".into() }
+        );
+    }
+
+    #[test]
+    fn command_word_is_case_insensitive() {
+        assert_eq!(
+            parse("GET app/db").unwrap(),
+            Command::Get { key: "app/db".into() }
+        );
+        assert_eq!(
+            parse("Put k v").unwrap(),
+            Command::Put { key: "k".into(), value: "v".into() }
+        );
+    }
+
+    #[test]
+    fn del_and_delete_are_aliases() {
+        let expected = Command::Delete { key: "k".into() };
+        assert_eq!(parse("del k").unwrap(), expected);
+        assert_eq!(parse("delete k").unwrap(), expected);
+    }
+
+    #[test]
+    fn put_preserves_internal_whitespace() {
+        // Regression: split_whitespace().join(" ") used to collapse the
+        // double space into a single one.
+        assert_eq!(
+            parse("put k hello   world").unwrap(),
+            Command::Put { key: "k".into(), value: "hello   world".into() }
+        );
+    }
+
+    #[test]
+    fn put_strips_one_pair_of_surrounding_quotes() {
+        assert_eq!(
+            parse(r#"put k "a  b""#).unwrap(),
+            Command::Put { key: "k".into(), value: "a  b".into() }
+        );
+        assert_eq!(
+            parse("put k 'single'").unwrap(),
+            Command::Put { key: "k".into(), value: "single".into() }
+        );
+    }
+
+    #[test]
+    fn put_keeps_unbalanced_or_inner_quotes() {
+        assert_eq!(
+            parse(r#"put k "unclosed"#).unwrap(),
+            Command::Put { key: "k".into(), value: r#""unclosed"#.into() }
+        );
+        assert_eq!(
+            parse(r#"put k say "hi""#).unwrap(),
+            Command::Put { key: "k".into(), value: r#"say "hi""#.into() }
+        );
+    }
+
+    #[test]
+    fn put_requires_key_and_value() {
+        assert!(matches!(
+            parse("put"),
+            Err(ConsulXError::MissingArgument("key"))
+        ));
+        assert!(matches!(
+            parse("put onlykey"),
+            Err(ConsulXError::MissingArgument("value"))
+        ));
+    }
+
+    #[test]
+    fn put_json_is_kept_verbatim() {
+        assert_eq!(
+            parse(r#"put-json k {"a": 1,  "b": 2}"#).unwrap(),
+            Command::PutJson { key: "k".into(), json: r#"{"a": 1,  "b": 2}"#.into() }
+        );
+    }
+
+    #[test]
+    fn list_and_tree_default_to_empty_prefix() {
+        assert_eq!(parse("list").unwrap(), Command::List { prefix: "".into() });
+        assert_eq!(parse("tree").unwrap(), Command::Tree { prefix: "".into() });
+    }
+
+    #[test]
+    fn watch_variants() {
+        assert_eq!(parse("watch k").unwrap(), Command::Watch { key: "k".into() });
+        assert_eq!(
+            parse("watch-prefix app/").unwrap(),
+            Command::WatchPrefix { prefix: "app/".into() }
+        );
+        assert!(matches!(
+            parse("watch-prefix"),
+            Err(ConsulXError::MissingArgument("prefix"))
+        ));
+    }
+
+    #[test]
+    fn help_aliases() {
+        assert_eq!(parse("help").unwrap(), Command::Help);
+        assert_eq!(parse("?").unwrap(), Command::Help);
+    }
+
+    #[test]
+    fn exit_and_quit_map_to_empty() {
+        assert_eq!(parse("exit").unwrap(), Command::Empty);
+        assert_eq!(parse("quit").unwrap(), Command::Empty);
+    }
+
+    #[test]
+    fn unknown_command_reports_name() {
+        match parse("frobnicate x") {
+            Err(ConsulXError::UnknownCommand(c)) => assert_eq!(c, "frobnicate"),
+            other => panic!("expected UnknownCommand, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unquote_helper() {
+        assert_eq!(unquote(r#""abc""#), "abc");
+        assert_eq!(unquote("'abc'"), "abc");
+        assert_eq!(unquote("abc"), "abc");
+        assert_eq!(unquote(r#""mismatch'"#), r#""mismatch'"#);
+        assert_eq!(unquote("\""), "\""); // single char, not a pair
+        assert_eq!(unquote(""), "");
     }
 }

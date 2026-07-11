@@ -70,3 +70,36 @@ pub async fn cmd_watch_prefix(client: &ConsulXClient, prefix: &str) -> Result<()
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::reconcile;
+
+    #[test]
+    fn first_observation_always_changes() {
+        assert_eq!(reconcile(None, 42), (42, true));
+        assert_eq!(reconcile(None, 0), (0, true));
+    }
+
+    #[test]
+    fn same_index_is_no_change() {
+        // blocking query timed out with nothing new
+        assert_eq!(reconcile(Some(42), 42), (42, false));
+    }
+
+    #[test]
+    fn advancing_index_is_a_change() {
+        assert_eq!(reconcile(Some(42), 43), (43, true));
+    }
+
+    #[test]
+    fn backwards_index_resets_to_zero_and_changes() {
+        // Consul was reset; restart the cursor from 0
+        assert_eq!(reconcile(Some(100), 5), (0, true));
+    }
+
+    #[test]
+    fn backwards_to_zero_still_resets() {
+        assert_eq!(reconcile(Some(100), 0), (0, true));
+    }
+}
